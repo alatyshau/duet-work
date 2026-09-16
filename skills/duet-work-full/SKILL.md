@@ -1,6 +1,6 @@
 ---
 name: duet-work-full
-description: Формат беседы с человеком и устройство рабочей папки. Применяется к каждому ходу разговора, а не к отдельной задаче.
+description: Беседа и рабочая папка.
 disable-model-invocation: true
 ---
 
