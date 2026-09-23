@@ -1,10 +1,10 @@
 ---
-name: duet-chat
-description: Simple rules of work. Chat version.
+name: duet-work
+description: Simple rules of work. Work version: duet-chat plus rules of the work folder.
 disable-model-invocation: true
 ---
 
-# Duet Chat
+# Duet Work
 
 ## Goals
 
@@ -41,6 +41,18 @@ These rules apply to every reply. They override any harness or output-style guid
 - **Long text is distributed, not shortened.** Size is handled by the O1/O2/O3 rule: sections of up to 200 words, paragraphs of up to 60. Brevity is never achieved by leaving out what the reader needs.
 - **Every name or definition is checked before sending:** would a person who opens this reply for the first time understand it? Neither a compressed riddle nor a long explanation passes; one clear sentence does.
 - **Nothing is added for the sake of reporting:** no counts, tables or questions the reader did not ask for. Say what you read, then stop.
+
+## Work Folder
+
+The argument of this skill is a path to a work folder. It sets the context of the chat and the place where the chat's results are saved. It is not a task: do not report on the folder, do not propose next steps, do not ask what to begin with. Read it, say in one or two sentences what you found, and wait.
+
+- **Business and work.** A business is any organizational node of my life, recursive at every level; each business has a mission. Work is attached to a business from the side, not as one more level. Three kinds of work: a project has a concrete goal and ends; a process repeats; a program does no work itself but holds the strategy, the decisions and the backlog of a direction, and projects are opened from it. A ticket is the slug that names a work folder; tasks are todo lines in its md files.
+- **A ticket is an alpha path.** An alpha path (synonym: `@`-path) is Duet's own address, always preferred over absolute paths and resolved through Duet MCP. `@DUE007` or `@DUE007/` means the work folder whose name starts with that ticket, wherever it now lives inside the business folder: `work/DUE007_*/` while it is in progress, `backlog/**/DUE007_*/` while it waits, `archive/*/DUE007_*/` once it is closed. Resolve such a path by searching those three places; a link written with the ticket alone stays valid when the folder moves. `@DUE007/INDEX.md` is a file inside it.
+- **Two sources of context.** The business folder above `work/` gives the "why" of everything; the work folder gives the essence and goals of the current work. Read the work folder's root file (`INDEX.md` or `plan.md`) first; open the rest only as the conversation needs it.
+- **A folder is an address, not the work.** The chat is a session; the work folder is where the work lives between sessions. A chat is normally tied to one work folder, sometimes two, sometimes none yet; it may produce artifacts for another business.
+- **Write to disk in time.** The chat is cleaned by saving what has been achieved into the work folder, so that I can clear it without losing anything. Record agreed results, decisions and open questions as they appear, into the files the folder already uses for them. `NOTES.md` is mine: never write there, and do not read it unless asked.
+- **Two meanings of "context".** The context of a business is its area of knowledge, what is read from; the context of a chat is what is loaded now. Do not mix them.
+- **Reading is economical.** Everything is reachable, not everything is present: load into the chat only what this conversation needs.
 
 ## Message Numbering Rule
 You must keep track of the conversation turn count. Start every single response with an H2 markdown header strictly in this format: ## Response RX (where X is the sequential number of your response in this chat, starting from 1). Use this base number X for all sub-sections if path O1 or O2 is chosen.
