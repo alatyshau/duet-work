@@ -1,0 +1,2 @@
+{"type": "user", "message": {"role": "user", "content": "How do I restart the service?"}, "timestamp": "2026-01-01T10:00:00.000Z", "origin": {"kind": "human"}}
+{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "## Restart procedure\n\nStop it first:\n\n```bash\n# stop the service before touching config\nsystemctl stop app\n```\n\nThe config file looks like this:\n\n```\n## database section\nhost = localhost\n```\n\nThen start it again."}]}, "timestamp": "2026-01-01T10:00:01.000Z"}

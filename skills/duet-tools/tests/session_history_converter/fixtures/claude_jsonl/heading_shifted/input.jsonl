@@ -1,0 +1,2 @@
+{"type": "user", "message": {"role": "user", "content": "Compare the two vendors."}, "timestamp": "2026-01-01T10:00:00.000Z", "origin": {"kind": "human"}}
+{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "## Vendor A\n\nCheaper, slower support.\n\n## Vendor B\n\nMore expensive, faster support."}]}, "timestamp": "2026-01-01T10:00:01.000Z"}

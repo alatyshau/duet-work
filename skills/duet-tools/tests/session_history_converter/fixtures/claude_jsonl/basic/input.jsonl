@@ -1,0 +1,3 @@
+{"type": "user", "message": {"role": "user", "content": "What's the capital of France?"}, "timestamp": "2026-01-01T10:00:00.000Z", "origin": {"kind": "human"}}
+{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "thinking", "thinking": "This is a simple factual question."}]}, "timestamp": "2026-01-01T10:00:04.000Z"}
+{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "The capital of France is Paris."}]}, "timestamp": "2026-01-01T10:00:05.000Z"}

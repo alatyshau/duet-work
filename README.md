@@ -14,6 +14,10 @@ Rules of conversation for the browser: every reply opens with a `## Response RX`
 
 `duet-chat` for Claude Code, plus a section on the work folder. The skill's argument is a path to a work folder: it sets the context of the chat and the place where results are saved, and it is not a task to report on. Covers business and work, project, process and program, tickets as alpha paths, writing results to disk in time, and the rule that what the user says in the chat outranks any file on disk.
 
+### `duet-tools`
+
+An index of standalone tool scripts, one folder per tool, invoked only on request (never auto-loaded). Currently holds `session_history_converter`, which splits an AI conversation into one markdown file per turn — from a Claude Code session, a claude.ai export, a Google AI Mode export or a DeepSeek export — plus a catalog of the browser extensions that produce those exports. Scripts run through `uv` and leave no environment or cache behind next to them.
+
 ### `duet-setup-claude`
 
 Know-how for tuning Claude Code and its VS Code extension: where the relevant files live, what can be changed, and what each change risks. Loaded only on request.

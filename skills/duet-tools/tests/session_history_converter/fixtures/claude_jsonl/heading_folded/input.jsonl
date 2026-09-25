@@ -1,0 +1,2 @@
+{"type": "user", "message": {"role": "user", "content": "Give me a migration plan."}, "timestamp": "2026-01-01T10:00:00.000Z", "origin": {"kind": "human"}}
+{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "## Migration plan\n\nStep one: back up the database.\n\n### Rollback\n\nKeep the old system running for one week."}]}, "timestamp": "2026-01-01T10:00:01.000Z"}
