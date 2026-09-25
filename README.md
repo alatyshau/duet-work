@@ -1,4 +1,4 @@
-# duet-work
+# Duet Work
 
 A library of skills for working with an AI assistant. Some of them belong to [Duet](https://github.com/alatyshau/duet), a human–AI operating environment; the rest work on their own.
 
@@ -12,7 +12,7 @@ Rules of conversation for the browser: every reply opens with a `## Response RX`
 
 ### `duet-work`
 
-`duet-chat` for Claude Code, plus a section on the work folder. The skill's argument is a path to a work folder: it sets the context of the chat and the place where results are saved, and it is not a task to report on. Covers business and work, project, process and program, tickets as alpha paths, and writing results to disk in time.
+`duet-chat` for Claude Code, plus a section on the work folder. The skill's argument is a path to a work folder: it sets the context of the chat and the place where results are saved, and it is not a task to report on. Covers business and work, project, process and program, tickets as alpha paths, writing results to disk in time, and the rule that what the user says in the chat outranks any file on disk.
 
 ### `duet-setup-claude`
 
