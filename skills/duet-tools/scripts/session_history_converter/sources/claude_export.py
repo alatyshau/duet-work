@@ -18,7 +18,9 @@ from pathlib import Path
 
 from turns import Atom
 
-DATE_LINE = re.compile(r"^> (\d{1,4})/(\d{1,4})/(\d{1,4}) (\d{2}):(\d{2}):(\d{2})\s*$")
+# the exporter doesn't zero-pad the hour ("2026/9/27 0:01:25"), hence \d{1,2}
+DATE_LINE = re.compile(r"^> (\d{1,4})/(\d{1,4})/(\d{1,4}) (\d{1,2}):(\d{1,2}):(\d{1,2})\s*$")
+FOOTER_PREFIX = "Powered by Claude Exporter"
 
 
 def detect(path: Path) -> bool:
@@ -42,17 +44,32 @@ def _parse_date(m: re.Match) -> datetime:
 
 
 def _strip_thoughts(body: list[str]) -> list[str]:
-    """Removes a leading quote block (the assistant's thinking/status) when
-    present. Applied only to assistant sections: in a User section such a
+    """Removes the leading quote blocks (the assistant's thinking/status)
+    when present. The exporter renders each thinking/status widget as its
+    own quote block, and a long agentic answer can carry several of them
+    before its visible text, separated by blank lines — so blocks are
+    stripped one after another until the body no longer starts with a
+    quote. Applied only to assistant sections: in a User section such a
     '>' quote can be part of the actual prompt, not a thought."""
-    if not body or not body[0].startswith(">"):
-        return body
-    i = 0
-    while i < len(body) and body[i].startswith(">"):
-        i += 1
-    while i < len(body) and body[i].strip() == "":
-        i += 1
-    return body[i:]
+    while body and body[0].startswith(">"):
+        i = 0
+        while i < len(body) and body[i].startswith(">"):
+            i += 1
+        while i < len(body) and body[i].strip() == "":
+            i += 1
+        body = body[i:]
+    return body
+
+
+def _strip_footer(body: list[str]) -> list[str]:
+    """Drops the exporter's signature — the last non-blank line of the file,
+    which lands inside the last section's body."""
+    i = len(body)
+    while i > 0 and body[i - 1].strip() == "":
+        i -= 1
+    if i > 0 and body[i - 1].startswith(FOOTER_PREFIX):
+        return body[: i - 1]
+    return body
 
 
 def _extract_timestamp(body: list[str]) -> tuple[datetime, list[str]]:
@@ -84,7 +101,7 @@ def load_atoms(path: Path) -> list[Atom]:
         elif role is not None:
             body.append(line)
     if role is not None:
-        sections.append((role, body))
+        sections.append((role, _strip_footer(body)))
 
     if len(sections) % 2 != 0:
         sys.exit(f"expected an even number of sections, got {len(sections)}")
