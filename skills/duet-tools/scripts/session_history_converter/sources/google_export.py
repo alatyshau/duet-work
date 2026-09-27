@@ -17,7 +17,11 @@ from turns import Atom
 
 REPLY_PREFIX = "### AI Mode reply for "
 JUNK_MARKER = "Copied to clipboardFailed to copy to clipboard. Try again later."
-IMAGE_JUNK = re.compile(r"!\[\]\(data:image/|sn\.\\?_setImageSrc\(")
+# Base64 never contains ')', so `[^)]*\)` safely closes each junk span
+# (the image markdown's paren, or the JS call's) without overshooting into
+# real text that follows on the same line — Google AI Mode interleaves
+# rendered-formula fragments as `![](data:image/...)fragment` runs.
+IMAGE_JUNK = re.compile(r"!\[\]\(data:image/[^)]*\)|sn\.\\?_setImageSrc\([^)]*\)")
 
 
 def detect(path: Path) -> bool:
@@ -28,17 +32,16 @@ def detect(path: Path) -> bool:
 
 
 def _strip_image_junk(lines: list[str]) -> list[str]:
-    """Cuts a line at the point the image junk starts, wherever that is;
-    real text before it (if any) is kept."""
+    """Removes image junk spans from each line, keeping any real text
+    that surrounds them — before or after."""
     out = []
     for line in lines:
-        m = IMAGE_JUNK.search(line)
-        if not m:
+        if not IMAGE_JUNK.search(line):
             out.append(line)
             continue
-        prefix = line[: m.start()].rstrip()
-        if any(ch.isalnum() for ch in prefix):
-            out.append(prefix)
+        cleaned = IMAGE_JUNK.sub("", line).rstrip()
+        if any(ch.isalnum() for ch in cleaned):
+            out.append(cleaned)
     return out
 
 
