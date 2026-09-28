@@ -1,48 +1,27 @@
 ---
 name: duet-tools
-description: Index of Duet tool scripts.
+description: Index of the Duet tool scripts and how to run them. Today one tool, the session history converter — turns an AI conversation (a Claude Code session, a claude.ai, Google AI Mode or DeepSeek export) into one markdown file per turn, and can file it as a dated, named folder wherever the person keeps their chats. Use it whenever a conversation is to be kept, converted, or someone asks how to export a chat, and when adding or changing a script in this skill.
 disable-model-invocation: true
 ---
 
 # Duet Tools
 
-An index of Duet tools. One tool, one folder under `scripts/` with its own entry script; the list below says what exists and when to use each one.
-
-## Rule for every script here
-
-Every script runs via `uv run --script scripts/<tool>/<entry>.py`. If it needs packages, they're declared in the script's own header per PEP 723 (`# /// script` ... `# ///`) with exact versions; `uv` builds the environment outside the working folder. Scripts in this skill run from context folders on the synced drive — no `venv`, `node_modules`, or cache directory is ever created next to them, since that kind of junk would sync to every machine through the cloud.
-
-No `uv` on the machine — don't work around it, tell the user the install command and stop:
+One tool, one folder under `scripts/`, always run as
 
 ```bash
-which uv || echo "uv not found"
+uv run --script scripts/<tool>/<entry>.py ...
 ```
 
-| OS | Install command |
-|---|---|
-| macOS | `brew install uv` |
-| Debian/Ubuntu | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| Windows | `winget install --id=astral-sh.uv -e` |
-
-**A tool made of several files** (a shared module plus one file per source/variant — that's how `session_history_converter` is built, rather than one ever-growing script) sets a flag in its entry point **before** importing its sibling modules — otherwise Python writes a `__pycache__` next to them on every run, which is the same kind of junk on the synced drive:
-
-```python
-import sys
-sys.dont_write_bytecode = True      # strictly before importing a sibling
-sys.path.insert(0, str(Path(__file__).parent))
-from turns import render_turn       # safe now
-```
-
-The entry point itself never caches its own bytecode (Python doesn't write it for a file run as a script) — the flag exists for what it imports.
+so that nothing gets installed next to the script on the synced drive. If `uv` is missing, tell the user the install command for their OS (`brew install uv` on macOS; the others are in [references/writing-a-tool.md](references/writing-a-tool.md)) and stop rather than working around it.
 
 ## Tools
 
-### Session History Converter
+### Session History Converter — `scripts/session_history_converter/`
 
-Splits an AI conversation into one markdown file per turn, in our own
-format — Claude Code sessions, claude.ai exports, Google AI Mode exports,
-DeepSeek exports. See [references/session_history_converter.md](references/session_history_converter.md) for how it's organized and how to add a source.
+Turns an AI conversation into one markdown file per human turn, in our own format, and can file it as a `<YYMMDD>_<HHMM>_<Client>_<Name>/` folder under whatever directory the person names — where chats are kept is their choice, not the tool's. Sources: Claude Code sessions (found on this machine by workspace folder), claude.ai exports, Google AI Mode exports and saved pages, DeepSeek exports.
 
-```bash
-uv run --script scripts/session_history_converter/convert.py <path-to-source>
-```
+Reach for it when someone wants a conversation kept or converted, asks how to export a chat, or hands over such a file. Read [references/session_history_converter.md](references/session_history_converter.md) first: it lists the entry points with their flags and says which deeper guide to open for exporters, Google saved pages, new sources, or math that won't render.
+
+## Adding or changing a script
+
+Read [references/writing-a-tool.md](references/writing-a-tool.md) before writing: the script header `uv` needs, why no cache or environment may appear beside a script, the one line a multi-file tool must have before importing its siblings, and where tests go.

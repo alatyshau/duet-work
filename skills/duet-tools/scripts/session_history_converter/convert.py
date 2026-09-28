@@ -16,6 +16,9 @@ Sources today (sources/<module>.py, each exposing detect(path) and load_atoms(pa
   still working on the previous turn, and interrupts.
 - **claude_export** — a claude.ai export, markdown, '## User:' / '## Assistant:' sections.
 - **google_export** — a Google AI Mode export, markdown, '### AI Mode reply for ...'.
+- **google_saved_page** — a Google AI Mode page saved from Chrome ("Web Page,
+  Complete"), or the slim copy slim_google_page.py makes of it; carries the
+  time of every prompt, which the export above lacks.
 - **deepseek_export** — a DeepSeek share-page export, markdown with '### User' /
   'DeepSeek AI' markers whose assistant bodies are HTML; cleaned to markdown
   before rendering. Not yet regression-tested against a real export — see
@@ -72,9 +75,9 @@ sys.dont_write_bytecode = True  # must come before importing sibling modules,
 sys.path.insert(0, str(Path(__file__).parent))  # or __pycache__ ends up on the synced drive
 
 from turns import render_turn, split_turns, turn_filename  # noqa: E402
-from sources import claude_export, claude_jsonl, deepseek_export, google_export  # noqa: E402
+from sources import claude_export, claude_jsonl, deepseek_export, google_export, google_saved_page  # noqa: E402
 
-SOURCES = [claude_jsonl, google_export, deepseek_export, claude_export]  # cheapest/most specific detect() first, most general last
+SOURCES = [claude_jsonl, google_saved_page, google_export, deepseek_export, claude_export]  # cheapest/most specific detect() first, most general last
 
 TURN_FILE_RE = re.compile(r"^\d{2,}(?:_\d{4}_\d{4})?\.md$")  # the names turn_filename() produces
 

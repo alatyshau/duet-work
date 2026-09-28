@@ -5,6 +5,16 @@ the first line. The export often has a JSON twin next to it, but that twin
 can't cleanly separate formatting from the assistant's thinking/status
 quote — so the source used here is the markdown, not the json.
 
+The exporter saves only the messages the claude.ai page has loaded; a long
+chat loads lazily from the bottom, so an export taken without scrolling to
+the top can start with an '## Assistant:' section whose prompt is missing
+(and the JSON twin holds that prompt as an empty string, not the text).
+Such a gap — an assistant section with no user section before it, or two
+user sections in a row — doesn't abort the run: the missing side becomes a
+visible marker (MISSING_PROMPT / MISSING_RESPONSE) so the turn boundary
+stays where it was, and a warning names each gap, since scrolling the chat
+up and exporting again recovers the real text.
+
 Produced by the "AI Chat Exporter: Save Claude as PDF, MD and more" Chrome
 extension — see the skill's
 references/session_history_converter/chrome-exporters.md for the browser
@@ -21,6 +31,8 @@ from turns import Atom
 # the exporter doesn't zero-pad the hour ("2026/9/27 0:01:25"), hence \d{1,2}
 DATE_LINE = re.compile(r"^> (\d{1,4})/(\d{1,4})/(\d{1,4}) (\d{1,2}):(\d{1,2}):(\d{1,2})\s*$")
 FOOTER_PREFIX = "Powered by Claude Exporter"
+MISSING_PROMPT = "*[prompt missing from the export — the page had not loaded it; scroll the chat up and export again to recover it]*"
+MISSING_RESPONSE = "*[response missing from the export — the page had not loaded it; scroll the chat up and export again to recover it]*"
 
 
 def detect(path: Path) -> bool:
@@ -103,17 +115,27 @@ def load_atoms(path: Path) -> list[Atom]:
     if role is not None:
         sections.append((role, _strip_footer(body)))
 
-    if len(sections) % 2 != 0:
-        sys.exit(f"expected an even number of sections, got {len(sections)}")
-
+    # claude.ai strictly alternates User/Assistant, so a repeated role (or an
+    # Assistant first) means the exporter skipped a message, not that the chat
+    # really had one; the marker keeps the turn split where it belongs
     atoms: list[Atom] = []
-    for i in range(0, len(sections), 2):
-        (h_role, h_raw), (a_role, a_raw) = sections[i], sections[i + 1]
-        if h_role != "human" or a_role != "assistant":
-            sys.exit(f"sections {i}/{i + 1} are not a User/Assistant pair ({h_role}/{a_role})")
-        h_time, h_body = _extract_timestamp(h_raw)
-        a_time, a_body = _extract_timestamp(a_raw)
-        a_body = _strip_thoughts(a_body)  # heading normalization happens in turns.render_section
-        atoms.append(Atom("prompt", text="\n".join(h_body).strip("\n"), timestamp=h_time))
-        atoms.append(Atom("response", text="\n".join(a_body).strip("\n"), timestamp=a_time))
+    gaps: list[str] = []
+    prev_role: str | None = None
+    for role, raw in sections:
+        time, body = _extract_timestamp(raw)
+        if role == "human":
+            if prev_role == "human":
+                atoms.append(Atom("response", text=MISSING_RESPONSE))
+                gaps.append(f"response before the prompt of {time:%Y-%m-%d %H:%M:%S}")
+            atoms.append(Atom("prompt", text="\n".join(body).strip("\n"), timestamp=time))
+        else:
+            if prev_role != "human":
+                atoms.append(Atom("prompt", text=MISSING_PROMPT))
+                gaps.append(f"prompt before the response of {time:%Y-%m-%d %H:%M:%S}")
+            body = _strip_thoughts(body)  # heading normalization happens in turns.render_section
+            atoms.append(Atom("response", text="\n".join(body).strip("\n"), timestamp=time))
+        prev_role = role
+
+    for gap in gaps:
+        print(f"warning: {path.name}: missing {gap} (not loaded on the page when exported)", file=sys.stderr)
     return atoms
