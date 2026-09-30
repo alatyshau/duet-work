@@ -1,15 +1,17 @@
 """What the google_saved_page fixtures can't show: the slim copy that
-slim_google_page.py keeps must convert exactly like the full page, and the
-date it pins must win over the saved-from anchor."""
+slim_google_page.py keeps must convert exactly like the full page, the date
+it pins must win over the saved-from anchor, and a day on a prompt's own
+label must win over both."""
 
 from datetime import date
 from pathlib import Path
 
 import pytest
 
-from sources.google_saved_page import load_atoms, parse_clock, slim
+from sources.google_saved_page import load_atoms, parse_clock, parse_day, slim
 
-CASES = sorted((Path(__file__).parent / "fixtures" / "google_saved_page").glob("*/input.html"))
+FIXTURES = Path(__file__).parent / "fixtures" / "google_saved_page"
+CASES = sorted(FIXTURES.glob("*/input.html"))
 
 
 def atoms_of(text: str, tmp_path: Path, name: str):
@@ -31,9 +33,23 @@ def test_slimming_twice_changes_nothing(case: Path):
 
 
 def test_pinned_date_wins_over_the_saved_from_anchor(tmp_path: Path):
-    full = CASES[0].read_text(encoding="utf-8")
+    full = (FIXTURES / "basic" / "input.html").read_text(encoding="utf-8")
     stamps = [t for _, _, t in atoms_of(slim(full, date(2026, 1, 2)), tmp_path, "slim.html") if t]
     assert stamps and all(t.date() == date(2026, 1, 2) for t in stamps)
+
+
+def test_a_day_on_the_label_wins_over_the_pin(tmp_path: Path):
+    full = (FIXTURES / "date_labels" / "input.html").read_text(encoding="utf-8")
+    stamps = [t for _, _, t in atoms_of(slim(full, date(2026, 1, 2)), tmp_path, "slim.html") if t]
+    assert stamps == [date(2026, 9, 15), date(2026, 9, 15), date(2026, 9, 17)]
+
+
+@pytest.mark.parametrize(
+    "label, day",
+    [("September 15, 2026", date(2026, 9, 15)), ("Sep 15, 2026", date(2026, 9, 15)), ("3:53 p.m.", None)],
+)
+def test_day_labels(label: str, day: date | None):
+    assert parse_day(label) == day
 
 
 @pytest.mark.parametrize(

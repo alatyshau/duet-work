@@ -11,29 +11,35 @@ at 10-20 sources a monolith would stop being maintainable.
 
 Sources today (sources/<module>.py, each exposing detect(path) and load_atoms(path)):
 
+- **codex_jsonl** — local Codex / ChatGPT Code / Work rollout sessions.
 - **claude_jsonl** — a Claude Code session (`~/.claude/projects/*/<sessionId>.jsonl`).
   A turn can include tool calls, prompts that arrived while the agent was
   still working on the previous turn, and interrupts.
 - **claude_export** — a claude.ai export, markdown, '## User:' / '## Assistant:' sections.
+- **chatgpt_export** — a chatgpt.com export, markdown, '## Prompt:' / '## Response:'
+  sections; progress messages shown before the model's reasoning become
+  Intermediate Responses.
+- **gemini_export** — a gemini.google.com export, markdown, '## User:' / '## Gemini:' sections.
+  These three are dialects of one family of Chrome exporters; what they
+  share lives in sources/exporter_family.py.
 - **google_export** — a Google AI Mode export, markdown, '### AI Mode reply for ...'.
 - **google_saved_page** — a Google AI Mode page saved from Chrome ("Web Page,
-  Complete"), or the slim copy slim_google_page.py makes of it; carries the
-  time of every prompt, which the export above lacks.
+  Complete"), or the slim copy slim_google_page.py makes of it; carries each
+  prompt's time, or only its day for older prompts, which the export above lacks.
 - **deepseek_export** — a DeepSeek share-page export, markdown with '### User' /
   'DeepSeek AI' markers whose assistant bodies are HTML; cleaned to markdown
   before rendering. Not yet regression-tested against a real export — see
   the module docstring.
 
-See the skill's references/session_history_converter/known-sources.md for
-sources that are documented but not yet implemented (no real example
-exists in this project to test against).
-
-To add a source: drop a `sources/<name>.py` with the same two functions and
-register it with one line in SOURCES below. The output format (this file
+To add a source: read the skill's
+references/session_history_converter/known-sources.md, drop a
+`sources/<name>.py` with the same two functions and register it with one
+line in SOURCES below. The output format (this file
 and turns.py) doesn't need to change.
 
-Output format — one markdown file per turn, `NN_MMDD_HHMM.md` (or `NN.md`
-when the source carries no dates) next to the source file:
+Output format — one markdown file per turn, `NN_MMDD_HHMM.md` (`NN_MMDD.md`
+when the source knows only the day, `NN.md` when it carries no dates) next
+to the source file:
 
     ---
     turn: 1
@@ -48,13 +54,14 @@ when the source carries no dates) next to the source file:
     [timestamp:: 2026-09-15 11:31:36]
     <the assistant's words, verbatim>
 
-When a turn holds more than that pair (currently only the claude_jsonl
-source produces this), `Tool_<Name>`, "Inline Prompt", "Intermediate
+When a turn holds more than that pair (local Claude Code and Codex
+sessions can produce this, and ChatGPT exports), `Tool_<Name>`, "Inline Prompt", "Intermediate
 Response" and "Interrupt" sections appear between them, sharing one running
 number within the file: `## Tool_Bash:01`, `## Intermediate Response:02`,
 and so on. The model's reasoning (thinking) and tool call results are
-never written to disk — this format captures what was said, not how the
-model arrived at it.
+never rendered in the turn Markdown — this format captures what was said,
+not how the model arrived at it. The saver still archives the raw source
+unchanged, including any such records it contains.
 
 Headings inside an AI response body (never a prompt) follow a separate
 rule, see turns.apply_heading_rule: if the response opens with a heading,
@@ -75,11 +82,22 @@ sys.dont_write_bytecode = True  # must come before importing sibling modules,
 sys.path.insert(0, str(Path(__file__).parent))  # or __pycache__ ends up on the synced drive
 
 from turns import render_turn, split_turns, turn_filename  # noqa: E402
-from sources import claude_export, claude_jsonl, deepseek_export, google_export, google_saved_page  # noqa: E402
+from sources import (  # noqa: E402
+    chatgpt_export,
+    claude_export,
+    claude_jsonl,
+    codex_jsonl,
+    deepseek_export,
+    gemini_export,
+    google_export,
+    google_saved_page,
+)
 
-SOURCES = [claude_jsonl, google_saved_page, google_export, deepseek_export, claude_export]  # cheapest/most specific detect() first, most general last
+# cheapest/most specific detect() first, most general last; gemini_export must
+# precede claude_export, which also claims any file with a '## User:' line
+SOURCES = [codex_jsonl, claude_jsonl, google_saved_page, google_export, deepseek_export, gemini_export, chatgpt_export, claude_export]
 
-TURN_FILE_RE = re.compile(r"^\d{2,}(?:_\d{4}_\d{4})?\.md$")  # the names turn_filename() produces
+TURN_FILE_RE = re.compile(r"^\d{2,}(?:_\d{4}(?:_\d{4})?)?\.md$")  # the names turn_filename() produces
 
 
 def load_atoms(path: Path):

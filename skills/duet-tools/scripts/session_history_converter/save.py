@@ -10,8 +10,10 @@ whatever directory the person names with --dest:
     uv run --script save.py <path-to-source> --dest <parent-dir> --name <Name> [--client <Label>] [--start YYMMDD[_HHMM]]
 
 `<Client>` defaults to what the source is: ClaudeChat for a claude.ai export,
+ChatGPT for a chatgpt.com export, Gemini for a gemini.google.com export,
 GoogleAI for a Google AI Mode export or saved page, DeepSeek for a DeepSeek
-export, ClaudeCode plus the model family for a Claude Code session. The
+export, ClaudeCode plus the model family for a Claude Code session, Codex
+for a local Codex / ChatGPT Code/Work session. The
 start time is the first timestamp in the conversation; a source without
 timestamps (Google AI Mode exports carry none) needs `--start`, and then the
 folder is named by date alone unless an hour is given.
@@ -33,7 +35,10 @@ import convert  # noqa: E402
 from saving import first_timestamp, save_as_folder  # noqa: E402
 
 CLIENT_BY_SOURCE = {
+    "codex_jsonl": "Codex",
     "claude_export": "ClaudeChat",
+    "chatgpt_export": "ChatGPT",
+    "gemini_export": "Gemini",
     "google_export": "GoogleAI",
     "google_saved_page": "GoogleAI",
     "deepseek_export": "DeepSeek",

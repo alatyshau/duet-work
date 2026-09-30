@@ -7,8 +7,9 @@ folder beside it — and names the chat's folder.
 ## Why the saved page and not the extension
 
 The "AI Chat Exporter" extension (`sources/google_export.py`) writes no
-dates at all and loses the formulas. The page itself shows the time of
-every prompt and holds every turn up to the moment of saving, so Chrome's
+dates at all and loses the formulas. The page itself shows when each
+prompt was asked — its time, or for older prompts only its day — and holds
+every turn up to the moment of saving, so Chrome's
 **Save Page As → Web Page, Complete** is the better input
 (`sources/google_saved_page.py`). "Webpage, HTML Only" does not work: it
 saves the server's first HTML, before any turn has been rendered.
@@ -30,12 +31,17 @@ full page, so it is the original that is kept.
    "no AI Mode turns" means the page was saved as "HTML Only": ask for it to
    be saved again with **Save Page As → Web Page, Complete**, and stop.
 
-2. Confirm the dates before converting. The page shows each prompt's time
-   but no date, so the script dates the first prompt by the day the tab
-   opened the thread, and prints that assumption with the resulting range.
-   That is wrong whenever the chat began on an earlier day than the tab was
-   opened, and nothing on the page can tell the two apart — so accept the
-   printed date only when something independent agrees: a date the person
+2. Confirm the dates before converting. A prompt the page labels with its
+   day ("September 15, 2026" — seen on threads saved ten days after they
+   were held) is dated by that label, and its turn file carries the day
+   alone, `NN_MMDD.md`; when every prompt is labeled so, the script says
+   there is nothing to confirm. A prompt labeled only with a time
+   ("3:53 p.m.") needs its day from elsewhere: the script takes the day on
+   which Google issued the page its token, and prints that assumption with
+   the resulting range. Every thread opened in the same tab carries that
+   same token, even days after the thread began, and nothing on the page
+   can tell the two apart — so accept the printed date only when something
+   independent agrees: a date the person
    gave, or the `YYMMDD` that starts the chat folder's name. With nothing to
    check against, or on a disagreement, ask on which day the chat began, and
    rerun step 1 with `--date YYYY-MM-DD`; that date is stored in the slim

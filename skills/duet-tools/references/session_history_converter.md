@@ -21,8 +21,9 @@ uv run --script scripts/session_history_converter/convert.py <path-to-source>
 ```
 
 **Save an export as a folder** — any export `convert.py` recognizes.
-`<Client>` follows the source (ClaudeChat, GoogleAI, DeepSeek, ClaudeCode plus
-the model family); the start comes from the first timestamp, or from
+`<Client>` follows the source (ClaudeChat, ChatGPT, Gemini, GoogleAI, DeepSeek, ClaudeCode plus
+the model family, or Codex for a local Code/Work rollout); the start comes
+from the first timestamp, or from
 `--start YYMMDD[_HHMM]` when the export carries none (Google AI Mode
 exports don't), and then the folder is named by date alone unless an hour
 is given.
@@ -31,9 +32,7 @@ is given.
 uv run --script scripts/session_history_converter/save.py <path-to-source> --dest <parent-dir> --name <Name> [--client <Label>] [--start YYMMDD[_HHMM]]
 ```
 
-**Save a Claude Code session** — Claude Code only: it is the one source
-whose conversations sit on this machine as files, every other source is an
-export the person brings. Without `--dest`/`--name` it lists the sessions of
+**Save a Claude Code session** — without `--dest`/`--name` it lists the sessions of
 a workspace folder (start time, model, first prompt); with them it saves one,
 the most recently started unless `--session` names another. `<HHMM>` is the
 first human prompt in local time; `<Client>` defaults to `ClaudeCode` plus
@@ -44,6 +43,12 @@ same `--dest` and `--name` refreshes the same folder after more turns.
 uv run --script scripts/session_history_converter/save_claude_code_session.py <workspace-folder>
 uv run --script scripts/session_history_converter/save_claude_code_session.py <workspace-folder> --dest <parent-dir> --name <Name> [--session <id>|latest] [--client <Label>]
 ```
+
+**Find or save a local ChatGPT Code / Work (Codex) session** — read
+[session_history_converter/codex-sessions.md](session_history_converter/codex-sessions.md)
+for title/UUID/workspace discovery, read-only analysis, export commands and
+format limitations. This is the local-session route, not a Chrome exporter.
+It uses the same folder and turn layout as Claude Code.
 
 **A Google AI Mode page saved from Chrome** goes through a slim step first
 and needs its dates confirmed — read
@@ -56,9 +61,9 @@ The scripts never write or touch `INDEX.md`; after saving, the agent writes
 it. Frontmatter:
 
 - `folder-type: ai-session`
-- `client` — Claude Code, Claude Chat, Google AI Mode, DeepSeek
+- `client` — Claude Code, ChatGPT Code, ChatGPT Work, Codex, Claude Chat, ChatGPT, Gemini, Google AI Mode, DeepSeek
 - `session-started` — when the session began
-- `session` — a Claude Code session's id
+- `session` — a local Claude Code or Codex session's id
 - `link` — the chat's URL, when the client has one
 - `model` — when the source names it
 
@@ -75,24 +80,37 @@ source, so it lives in shared modules and each source only feeds them:
   input to this shape; the format itself lives only here.
 - `saving.py` — the saved-chat folder layout, `<YYMMDD>_<HHMM>_<Client>_<Name>/`
   with the export copied in and the turn files beside it. Shared by the
-  two entry points below so the layout is defined once.
+  entry points below so the layout is defined once.
 - `save.py` — saves any export convert.py recognizes into that layout;
   picks `<Client>` from the source and the start from the first timestamp
   (or `--start` for undated exports). Tests: `test_saving.py`.
-- `save_claude_code_session.py` — Claude Code only (the one source whose
-  files live on this machine): finds a workspace folder's sessions under
+- `save_claude_code_session.py` — local Claude Code sessions: finds a
+  workspace folder's sessions under
   `~/.claude/projects/`, lists them, and saves one through saving.py. It
   matches sessions by the `cwd` they recorded, because the projects
   directory name replaces every non-`[A-Za-z0-9]` character of the path
   with `-`, so different folders with non-Latin names share a directory.
   Tests: `test_save_claude_code_session.py`.
+- `save_codex_session.py` — local Codex / ChatGPT Code/Work discovery and
+  snapshot saving; title indexes are read-only, transcripts come from JSONL.
+  Tests: `test_codex_session.py` and `fixtures/codex_jsonl/`.
 - `sources/` — one file per source, each exposing `detect(path)` and
-  `load_atoms(path)`: `claude_jsonl.py` (Claude Code sessions),
-  `claude_export.py` (claude.ai exports), `google_export.py` (Google AI
+  `load_atoms(path)`: `claude_jsonl.py` (Claude Code sessions), `codex_jsonl.py` (local
+  Codex / ChatGPT Code/Work rollouts),
+  `claude_export.py` (claude.ai exports), `chatgpt_export.py` (chatgpt.com
+  exports), `gemini_export.py` (gemini.google.com exports),
+  `google_export.py` (Google AI
   Mode exports made by the extension), `google_saved_page.py` (a Google AI
   Mode page saved from Chrome, or its slim copy), `deepseek_export.py`
   (DeepSeek share-page exports). A new source is a new file here plus one
   line in `convert.py`'s `SOURCES` list — `turns.py` doesn't change.
+  The claude.ai, ChatGPT and Gemini exports come from one family of Chrome
+  exporters and share a skeleton — marker-split sections, a date line
+  first, a signature at the end, gaps from messages the page had not
+  loaded — which lives once in `sources/exporter_family.py`; each of the
+  three modules is only its dialect: markers, date format, signature, and
+  how that provider's reasoning is cut out. Another exporter of the same
+  shape is a new dialect module, not a copy of the skeleton.
 - `slim_google_page.py` — cuts a saved Google AI Mode page (~18 MB, most of
   it stylesheets, scripts and the side panel with the viewer's whole search
   history) down to the turns alone (~0.7 MB) and writes that copy into the
@@ -104,9 +122,9 @@ Deeper reference material for this tool lives alongside this file, in
 [session_history_converter/](session_history_converter/). Read only the one
 that actually applies to what you're doing:
 
-- **Someone asks how to export a chat** from Claude, ChatGPT, Gemini,
+- **Someone asks how to export a browser/cloud chat** from Claude, ChatGPT, Gemini,
   Google AI Mode, or DeepSeek — even outside any work on this tool, just a
-  person wanting to save a conversation — read
+  person wanting to save a conversation without a local rollout — read
   [session_history_converter/chrome-exporters.md](session_history_converter/chrome-exporters.md)
   and answer with the actual Chrome extension for that provider, by name
   and store link. This is the primary reason that file exists. It also maps
@@ -118,11 +136,12 @@ that actually applies to what you're doing:
   Search.html`, a `_files` folder beside it) — read
   [session_history_converter/google-ai-mode.md](session_history_converter/google-ai-mode.md):
   the slim step, how to confirm the dates, what to leave to the person.
-- **Asked to support a new source** (Gemini, ChatGPT, or any export that
+- **Asked to support a new source** (any export that
   doesn't match `detect()` in any current `sources/*.py` module) — read
   [session_history_converter/known-sources.md](session_history_converter/known-sources.md)
-  first. It has the marker patterns already gathered for the common ones,
-  so you don't start from a blank grep.
+  first: it says how to tell whether the export is one more dialect of the
+  exporter family (a small module, not a new parser) and what to check in
+  a real file before writing anything else.
 - **A converted turn file has math that won't render** (a `tikzcd` diagram
   showing as raw text, a KaTeX parse error, `$...$` glued to surrounding
   prose) — read

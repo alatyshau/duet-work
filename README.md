@@ -16,7 +16,7 @@ Rules of conversation for the browser: every reply opens with a `## Response RX`
 
 ### `duet-tools`
 
-An index of standalone tool scripts, one folder per tool, invoked only on request (never auto-loaded). Currently holds `session_history_converter`, which splits an AI conversation into one markdown file per turn — from a Claude Code session, a claude.ai export, a Google AI Mode export or saved page, or a DeepSeek export — and can save the whole conversation as a dated, named folder, finding Claude Code sessions by workspace folder. Comes with a catalog of the ways those exports are made. Scripts run through `uv` and leave no environment or cache behind next to them.
+An index of standalone tool scripts, one folder per tool, invoked only on request (never auto-loaded). Currently holds `session_history_converter`, which splits an AI conversation into one markdown file per turn — from a Claude Code or local ChatGPT Code/Work session, a claude.ai, ChatGPT or Gemini export, a Google AI Mode export or saved page, or a DeepSeek export — and can save the whole conversation as a dated, named folder, finding Claude Code sessions by workspace folder and local Codex / ChatGPT Code/Work sessions by title, ID or workspace. Comes with a catalog of the ways those exports are made. Scripts run through `uv` and leave no environment or cache behind next to them.
 
 ### `duet-setup-claude`
 

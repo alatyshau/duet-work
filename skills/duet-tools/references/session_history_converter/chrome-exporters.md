@@ -12,11 +12,15 @@ export's output signature (so a file can be recognized even without knowing
 which extension made it) and, where confirmed, which `sources/*.py` module
 already parses that output.
 
+For local ChatGPT Code/Work sessions, use [codex-sessions.md](codex-sessions.md)
+instead; this catalog concerns web exports, not local rollout logs.
+
 ## Google AI Mode: Save Page As — Web Page, Complete
 
 No extension. In Chrome, on the AI Mode thread: **Save Page As → Web Page,
-Complete**. This is the better export for AI Mode: it keeps the time of
-every prompt, every turn up to the moment of saving, and the formulas — all
+Complete**. This is the better export for AI Mode: it keeps when each
+prompt was asked (the time, or for older prompts only the day), every turn
+up to the moment of saving, and the formulas — all
 of which the extension below drops. `sources/google_saved_page.py` parses
 the saved page; the page is large (~18 MB with its `_files` folder), so it
 goes through a slim step first — see [google-ai-mode.md](google-ai-mode.md).
@@ -63,11 +67,19 @@ carries this exact signature).
 
 [Chrome Web Store](https://chromewebstore.google.com/detail/chatgpt-exporter-chatgpt/ilmdofdhpnhffldihboadndccenlnfll)
 
-For **ChatGPT**. No output signature or example on hand yet, so nothing
-here is confirmed — matches the gap in `known-sources.md`, where
-ChatGPT is listed as a source this tool doesn't parse yet, exactly because
-no real export has been inspected. Fill in the signature and a `sources/`
-module once one turns up.
+For **ChatGPT**. Signs its output with a rule and a line, the last two of
+the file:
+
+```
+---
+Powered by [ChatGPT Exporter](https://www.chatgptexporter.com)
+```
+
+Its markdown has `## Prompt:` / `## Response:` sections, a date line such
+as `9/27/2026, 9:54:58 PM · gpt-6-pro` under each marker (the model only on
+responses), and the model's reasoning as a quote block ending in
+`> Worked for 33s`. Handled by `sources/chatgpt_export.py` (confirmed
+against a real export, 2026-09-29, that carries this exact signature).
 
 ## AI Chat Exporter: Gemini to PDF, MD and more
 
@@ -75,9 +87,15 @@ module once one turns up.
 
 For **Gemini** (the chat product, not Google Search AI Mode — a different
 extension above already covers that one). Same publisher family as the
-first two entries, one extension per provider again. No output signature or
-example on hand yet; matches the Gemini gap in
-`known-sources.md`.
+first two entries, one extension per provider again.
+
+A real Gemini export in markdown (2026-09-29) was handled by
+`sources/gemini_export.py`, but it carries no signature, so which extension
+made it isn't confirmed. What it does carry: a `**Exported:**` /
+`**Link:** https://gemini.google.com/app/...` header, `## User:` /
+`## Gemini:` sections with a `> 2026/9/27 22:11:36` date line under each
+marker — the same date line as the Claude export above — and the model's
+reasoning as a quote block opening with `> **Thinking steps**`.
 
 ## DeepSeek Chat Exporter
 

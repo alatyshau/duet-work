@@ -7,10 +7,11 @@ script:
         01_MMDD_HHMM.md, 02_..., one turn file per human prompt
 
 `<YYMMDD>_<HHMM>` is when the conversation started, `<Client>` names what
-answered (ClaudeCodeFable, ClaudeChat, GoogleAI, DeepSeek), `<Name>` is the
+answered (ClaudeCodeFable, Codex, ClaudeChat, ChatGPT, Gemini, GoogleAI, DeepSeek), `<Name>` is the
 person's own title for it; `<dest>`, where the folder goes, is the
 person's choice too. A source that carries no timestamps gets only
-`<YYMMDD>` in the folder name, and the person has to supply that date.
+`<YYMMDD>` in the folder name, and the person has to supply that date; one
+that knows only the day of its first prompt gets `<YYMMDD>` from it.
 """
 
 import shutil
@@ -23,6 +24,7 @@ from turns import Atom, render_turn, split_turns, turn_filename
 def folder_name(start: datetime | None, client: str, name: str, date_only: bool = False) -> str:
     if start is None:
         raise ValueError("a start time is needed to name the folder")
+    date_only = date_only or not isinstance(start, datetime)  # a bare date has no hour to show
     stamp = f"{start:%y%m%d}" if date_only else f"{start:%y%m%d_%H%M}"
     return f"{stamp}_{client}_{name}"
 

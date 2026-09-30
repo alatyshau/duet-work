@@ -2,8 +2,8 @@
 Complete"), or the slimmed copy of it that slim_google_page.py writes.
 
 Unlike google_export (the "AI Chat Exporter" extension's markdown), the saved
-page is the live DOM, so it carries what the extension drops: the time of
-every prompt, every turn up to the moment of saving, and the formulas.
+page is the live DOM, so it carries what the extension drops: when each
+prompt was asked, every turn up to the moment of saving, and the formulas.
 "Web Page, HTML Only" does NOT work — Chrome then saves the server's first
 HTML, in which no turn has been rendered yet.
 
@@ -12,16 +12,21 @@ What is read, per turn (`data-scope-id="turn"`):
   (REPLY_HEADING_CLASS), the one place its line breaks survive: the visible
   span (PROMPT_CLASS, the fallback) has them stripped ("слово\\n\\nВсё" shows
   as "словоВсё");
-- its time — "3:53 p.m." in the viewer's locale, minutes only, no date
-  (TIME_CLASS); responses carry no time of their own;
+- when it was asked — the label TIME_CLASS, holding either the time,
+  "3:53 p.m." in the viewer's locale, minutes only, or for older prompts
+  only the day, "September 15, 2026" (seen on threads saved ten days after
+  they were held; a page saved the next day still showed times); responses
+  carry no time of their own;
 - the response — the subtree under RESPONSE_CLASS, rendered to markdown here.
 
-The date is not on the page at all. It is anchored to the moment the tab
-opened the thread, which Chrome records in the `<!-- saved from url=... -->`
-comment at the top of the file (the `sxsrf` parameter ends in a millisecond
-timestamp); each time a prompt's time goes backwards, the next day begins.
-This is wrong when the thread was begun on an earlier day than the tab was
-opened, so slim_google_page.py can pin the first turn's date explicitly
+A day on the label dates its prompt as it stands, and the turn file then
+carries the day alone. A time needs its day from elsewhere: the millisecond
+timestamp that ends the `sxsrf` parameter in the `<!-- saved from url=... -->`
+comment at the top of the file anchors the first such prompt, and each time
+a prompt's time goes backwards, the next day begins. That timestamp is when
+Google issued the page its token, not when the thread began — every thread
+opened in the same tab carries the same one, even days later — so
+slim_google_page.py can pin the day of the first prompt labeled with a time
 (DATE_META), which then wins over the anchor.
 
 Formulas come as "chips" (CHIP_CLASS) holding three copies of the same
@@ -70,6 +75,8 @@ DATE_META = "duet-first-turn-date"
 SAVED_FROM = re.compile(r"<!-- saved from url=\(\d+\)(\S+) -->")
 SXSRF_MS = re.compile(r"sxsrf=[^&\s]*?(?:%3A|:)(\d{13})")
 TIME = re.compile(r"(\d{1,2}):(\d{2})(?:\s*([ap])\.?\s*m\.?)?", re.IGNORECASE)
+DAY = re.compile(r"\b([A-Za-z]{3,9})\.?\s+(\d{1,2}),\s+(\d{4})\b")
+MONTHS = ("january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december")
 
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr", "param"}
 INLINE_TAGS = {"span", "strong", "b", "em", "i", "a", "code", "mark", "u", "br", "sub", "sup", "s", "del", "small", "q", "abbr"}
@@ -146,10 +153,11 @@ def find_turns(root: Node) -> list[Node]:
 # --- dates and times -------------------------------------------------------------
 
 
-def tab_opened_at(text: str) -> datetime | None:
-    """When the tab opened the thread, in local time — from the saved-from
-    comment only: the body is full of render-time timestamps that would
-    anchor every turn to the saving day."""
+def token_issued_at(text: str) -> datetime | None:
+    """When Google issued the page its `sxsrf` token, in local time — from
+    the saved-from comment only: the body is full of render-time timestamps
+    that would anchor every turn to the saving day. Not when the thread
+    began: every thread opened in the same tab carries the same token."""
     saved = SAVED_FROM.search(text[:20000])
     ms = SXSRF_MS.search(saved.group(1)) if saved else None
     return datetime.fromtimestamp(int(ms.group(1)) / 1000) if ms else None
@@ -161,10 +169,10 @@ def pinned_date(text: str) -> date | None:
 
 
 def first_turn_date(text: str) -> date | None:
-    """DATE_META if the slim step pinned one, else the day the tab opened
-    the thread."""
-    opened = tab_opened_at(text)
-    return pinned_date(text) or (opened.date() if opened else None)
+    """The day of the first prompt labeled with a time: DATE_META if the slim
+    step pinned one, else the day Google issued the page its token."""
+    issued = token_issued_at(text)
+    return pinned_date(text) or (issued.date() if issued else None)
 
 
 def parse_clock(label: str) -> tuple[int, int] | None:
@@ -178,6 +186,22 @@ def parse_clock(label: str) -> tuple[int, int] | None:
     elif half == "a" and hour == 12:
         hour = 0
     return hour, minute
+
+
+def parse_day(label: str) -> date | None:
+    """'September 15, 2026', 'Sep 15, 2026' -> date(2026, 9, 15) — what the
+    label of an older prompt holds instead of its time."""
+    m = DAY.search(label.replace(" ", " ").replace("\xa0", " "))
+    if not m:
+        return None
+    name = m.group(1).lower()
+    month = next((i for i, full in enumerate(MONTHS, start=1) if full.startswith(name)), None)
+    if month is None:
+        return None
+    try:
+        return date(int(m.group(3)), month, int(m.group(2)))
+    except ValueError:
+        return None
 
 
 def assign_dates(clocks: list[tuple[int, int] | None], start: date) -> list[datetime | None]:
@@ -448,6 +472,26 @@ def turn_clock(turn: Node) -> tuple[int, int] | None:
     return parse_clock(label.raw_text()) if label is not None else None
 
 
+def turn_day(turn: Node) -> date | None:
+    label = turn.find(lambda n: n.has_class(TIME_CLASS))
+    return parse_day(label.raw_text()) if label is not None else None
+
+
+def turn_stamps(turns: list[Node], start: date | None) -> list[date | None]:
+    """When each prompt was asked. A day on its label is taken as it stands
+    (with the time too, should one ever stand beside it); a time alone gets
+    its day from `start` through assign_dates, which counts only the prompts
+    labeled that way. None where neither is known."""
+    days = [turn_day(t) for t in turns]
+    clocks = [turn_clock(t) for t in turns]
+    timed = [clock if day is None else None for day, clock in zip(days, clocks)]
+    anchored = assign_dates(timed, start) if start is not None else [None] * len(turns)
+    return [
+        a if d is None else (datetime(d.year, d.month, d.day, *c) if c else d)
+        for d, c, a in zip(days, clocks, anchored)
+    ]
+
+
 # --- slimming ---------------------------------------------------------------------
 
 KEEP_ATTRS = {"class", "href", "encoding", "data-scope-id"}
@@ -511,12 +555,9 @@ def load_atoms(path: Path) -> list[Atom]:
     text = path.read_text(encoding="utf-8")
     turns = find_turns(parse_html(text))
     start = first_turn_date(text)
-    clocks = [turn_clock(t) for t in turns]
-    if start is None:
-        print(f"warning: {path.name}: no date on the page (no saved-from comment, no {DATE_META}); turns left undated", file=sys.stderr)
-        stamps: list[datetime | None] = [None] * len(turns)
-    else:
-        stamps = assign_dates(clocks, start)
+    stamps = turn_stamps(turns, start)
+    if start is None and any(turn_day(t) is None and turn_clock(t) is not None for t in turns):
+        print(f"warning: {path.name}: no date on the page (no saved-from comment, no {DATE_META}); prompts labeled with a time left undated", file=sys.stderr)
     atoms: list[Atom] = []
     for turn, stamp in zip(turns, stamps):
         atoms.append(Atom("prompt", text=render_prompt(turn), timestamp=stamp))

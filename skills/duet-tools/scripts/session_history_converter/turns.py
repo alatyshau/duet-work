@@ -11,7 +11,7 @@ The output format itself is documented in convert.py's module docstring.
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 
 HEADING = re.compile(r"^(#{1,6})(\s+.*)$")
 
@@ -34,10 +34,12 @@ class Atom:
     tool_name: str = ""
     tool_input: dict = field(default_factory=dict)
     timestamp: datetime | None = None
+    turn_id: str | None = None  # explicit source turn boundary, when available
 
 
 def split_turns(atoms: list[Atom]) -> list[list[Atom]]:
-    """A prompt right after a response starts a new turn. A prompt right
+    """Explicit source turn IDs take precedence when both atoms carry them.
+    Otherwise, a prompt right after a response starts a new turn. A prompt right
     after a tool call, an interrupt, or another prompt stays in the same
     turn — it either extends the opening prompt or becomes an inline
     prompt, which render_turn decides from its position in the turn."""
@@ -45,7 +47,10 @@ def split_turns(atoms: list[Atom]) -> list[list[Atom]]:
     current: list[Atom] = []
     last_kind: str | None = None
     for atom in atoms:
-        if atom.kind == "prompt" and last_kind == "response":
+        current_id = next((a.turn_id for a in reversed(current) if a.turn_id), None)
+        explicit_boundary = atom.turn_id is not None and current_id is not None
+        new_turn = atom.turn_id != current_id if explicit_boundary else last_kind == "response"
+        if atom.kind == "prompt" and new_turn:
             if current:
                 turns.append(current)
             current = [atom]
@@ -131,13 +136,20 @@ def apply_heading_rule(text: str) -> tuple[str, str]:
     return "", "\n".join(normalize_headings(lines)).strip("\n")
 
 
+def stamp_text(ts: date) -> str:
+    """A timestamp as a turn file writes it. A source that knows the day but
+    not the time (a Google AI Mode page shows older prompts that way) gives a
+    bare date, written without a made-up time."""
+    return f"{ts:%Y-%m-%d %H:%M:%S}" if isinstance(ts, datetime) else f"{ts:%Y-%m-%d}"
+
+
 def render_section(heading: str, atom: Atom) -> str:
     suffix, text = ("", atom.text.strip("\n"))
     if atom.kind == "response":
         suffix, text = apply_heading_rule(atom.text)
     parts = [heading + suffix]
     if atom.timestamp is not None:
-        parts.append(f"[timestamp:: {atom.timestamp:%Y-%m-%d %H:%M:%S}]")
+        parts.append(f"[timestamp:: {stamp_text(atom.timestamp)}]")
     parts.append("")
     parts.append(text)
     return "\n".join(parts)
@@ -181,7 +193,7 @@ def render_turn(n: int, atoms: list[Atom]) -> str:
         elif atom.kind == "interrupt":
             heading = f"## {HEADING_INTERRUPT}:{counter:02d}"
             if atom.timestamp is not None:
-                heading += f"\n[timestamp:: {atom.timestamp:%Y-%m-%d %H:%M:%S}]"
+                heading += f"\n[timestamp:: {stamp_text(atom.timestamp)}]"
             sections.append(heading)
 
     if final_section:
@@ -193,5 +205,10 @@ def render_turn(n: int, atoms: list[Atom]) -> str:
 
 def turn_filename(n: int, atoms: list[Atom]) -> str:
     first_ts = next((a.timestamp for a in atoms if a.timestamp), None)
-    suffix = f"_{first_ts:%m%d_%H%M}" if first_ts else ""
+    if first_ts is None:
+        suffix = ""
+    elif isinstance(first_ts, datetime):
+        suffix = f"_{first_ts:%m%d_%H%M}"
+    else:
+        suffix = f"_{first_ts:%m%d}"  # the day is known, the time is not
     return f"{n:02d}{suffix}.md"

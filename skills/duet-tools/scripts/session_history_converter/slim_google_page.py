@@ -18,22 +18,32 @@ files as converting the full page.
 
 Usage: uv run --script slim_google_page.py <saved-page.html> <chat-folder> [--date YYYY-MM-DD]
 
---date pins the first prompt's date. Without it the first prompt is dated
-the day the tab opened the thread, which is right only if the chat began
-that day; the script prints what it assumed so the agent can confirm it —
-the steps are in references/session_history_converter/google-ai-mode.md. The slim copy is written as
+A prompt the page labels with its day is dated by that label. One labeled
+only with a time needs its day from elsewhere: --date pins the day of the
+first such prompt; without it, that day is the one on which Google issued
+the page its token, which is right only if the chat began that day. The
+script prints what it assumed so the agent can confirm it — the steps are
+in references/session_history_converter/google-ai-mode.md. The slim copy is written as
 <chat-folder>/<saved-page name>; the '_files' folder Chrome saves next to
 the page is not needed and is not read.
 """
 
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 sys.dont_write_bytecode = True  # must come before importing sibling modules,
 sys.path.insert(0, str(Path(__file__).parent))  # or __pycache__ ends up on the synced drive
 
-from sources.google_saved_page import assign_dates, find_turns, first_turn_date, parse_html, pinned_date, slim, tab_opened_at, turn_clock  # noqa: E402
+from sources.google_saved_page import find_turns, first_turn_date, parse_html, pinned_date, slim, token_issued_at, turn_clock, turn_day, turn_stamps  # noqa: E402
+
+
+def shown(stamp: date) -> str:
+    return f"{stamp:%Y-%m-%d %H:%M}" if isinstance(stamp, datetime) else f"{stamp:%Y-%m-%d}"
+
+
+def day_of(stamp: date) -> date:
+    return stamp.date() if isinstance(stamp, datetime) else stamp
 
 
 def main() -> None:
@@ -57,21 +67,26 @@ def main() -> None:
     out.write_text(slimmed, encoding="utf-8")
     print(f"{source.stat().st_size / 1e6:.1f} MB -> {len(slimmed.encode()) / 1e6:.2f} MB: {out}")
 
-    opened, start = tab_opened_at(text), first_turn_date(slimmed)
-    if opened is not None:
-        print(f"the tab opened this thread on {opened:%Y-%m-%d at %H:%M}")
-    if start is None:
+    issued, start = token_issued_at(text), first_turn_date(slimmed)
+    timed = sum(turn_day(t) is None and turn_clock(t) is not None for t in turns)  # prompts whose label shows only a time
+    if timed and issued is not None:
+        print(f"Google issued the page its token on {issued:%Y-%m-%d at %H:%M}")
+    if timed and start is None:
         print("no date on the page: ask when the chat began and rerun with --date YYYY-MM-DD", file=sys.stderr)
         return
-    stamps = [s for s in assign_dates([turn_clock(t) for t in turns], start) if s]
+    stamps = [s for s in turn_stamps(turns, start) if s]
     if stamps:
-        print(f"{len(turns)} prompts dated {stamps[0]:%Y-%m-%d %H:%M} .. {stamps[-1]:%Y-%m-%d %H:%M}")
-        days = (stamps[-1].date() - stamps[0].date()).days + 1
+        print(f"{len(turns)} prompts dated {shown(stamps[0])} .. {shown(stamps[-1])}")
+        days = (day_of(stamps[-1]) - day_of(stamps[0])).days + 1
         print(f"the chat spans {days} day{'s' if days > 1 else ''}")
+    if not timed:
+        if stamps:
+            print("every prompt carries its own day on the page — nothing to confirm")
+        return
     if pinned_date(slimmed) is not None:
-        print(f"first prompt's date pinned to {start}")
+        print(f"the first prompt labeled with a time is pinned to {start}")
     else:
-        print(f"assumed: the first prompt was asked on {start}, the day the tab opened the thread — confirm it, or rerun with --date")
+        print(f"assumed: the first prompt labeled with a time was asked on {start}, the day Google issued the page its token — confirm it, or rerun with --date")
 
 
 if __name__ == "__main__":

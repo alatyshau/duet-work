@@ -22,7 +22,23 @@ COMMAND_RE = re.compile(r"<command-name>(.*?)</command-name>(?:\s*<command-args>
 
 
 def detect(path: Path) -> bool:
-    return path.suffix == ".jsonl"
+    if path.suffix.lower() != ".jsonl":
+        return False
+    with path.open(encoding="utf-8") as stream:
+        for line in stream:
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                return False
+            if not isinstance(row, dict):
+                return False
+            if row.get("type") == "session_meta":
+                return False
+            if row.get("type") in ("user", "assistant") and isinstance(row.get("message"), dict):
+                return True
+    return False
 
 
 def clean_prompt_text(text: str) -> str:
