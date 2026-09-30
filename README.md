@@ -2,17 +2,19 @@
 
 A library of skills for working with an AI assistant. Some of them belong to [Duet](https://github.com/alatyshau/duet), a human–AI operating environment; the rest work on their own.
 
-Each skill is a folder under `skills/` with a `SKILL.md` in the Anthropic skill format, so it can be loaded by Claude Code, claude.ai and other clients that read that format.
+Each skill is a folder under `skills/` with a `SKILL.md` in the Anthropic skill format, so it can be loaded by Claude Code, claude.ai and other clients that read that format. The Duet system prompts live under `system-prompts/`.
 
 ## Skills
 
+`duet-chat` and `duet-work` are two variants of one conversation format, and the `duet-workflow` system prompt carries a third. They exclude each other: a session uses exactly one, so each is complete in itself, and the parts they share are repeated in each on purpose.
+
 ### `duet-chat`
 
-Rules of conversation for the browser: every reply opens with a `## Response RX` header, its size is chosen by one of three routes (a multi-turn plan, a sectioned reply, or short prose under 200 words), and the text is connected, structured prose. Includes self-contained text, so a reply can be read without the chat history, and a running list of the chat's purposes.
+The conversation format for the browser. There is no Duet system prompt there, so the skill carries everything itself: the goals and stance of the assistant, replies that read without the chat history, the writing rules, the ritual of each turn — understanding what the user expects and choosing the size and form of the reply — and a running list of the purposes the chat serves.
 
 ### `duet-work`
 
-`duet-chat` for Claude Code, plus a section on the work folder. The skill's argument is a path to a work folder: it sets the context of the chat and the place where results are saved, and it is not a task to report on. Covers business and work, project, process and program, tickets as alpha paths, writing results to disk in time, and the rule that what the user says in the chat outranks any file on disk.
+The conversation format of `duet-chat` for Claude Code, tied to a work folder. The skill's argument is the path to the folder: it supplies the context of the work and keeps its results between sessions. Used with the `duet-core` system prompt.
 
 ### `duet-tools`
 
@@ -25,3 +27,15 @@ Know-how for tuning Claude Code and its VS Code extension: where the relevant fi
 ### `duet-work-full`
 
 **Deprecated.** Kept as a source to mine; not for use. Described a conversation format with addressable thoughts and two root files of a work folder: `INDEX.md` kept by the agent, `NOTES.md` kept by the human.
+
+## System prompts
+
+Each file under `system-prompts/` is a Claude Code output style. A business gets one as its system prompt through the `system_prompt` field of its `context.json`, and Duet deploys it to Claude Code, Codex and Kimi Code.
+
+### `duet-core`
+
+The foundation of a Duet session: orientation in the business through Duet MCP, the model of contexts, the manifest, alpha paths, the memory policy and the writing rules. It is the Duet platform prompt (`packages/instructions/bootstrapper.md` in Duet), taken as a standalone system prompt.
+
+### `duet-workflow`
+
+The complete Duet session for Claude Code, needing no conversation skill: `duet-core`, the conversation format of `duet-work`, and the turn protocol, in which the Duet server leads the agent through the session and every turn and the agent reports each step with a tool call. In development; the server side of the protocol does not exist yet.
